@@ -42,7 +42,7 @@
       path: /Audio/Ambience/Objects/periodic_beep.ogg
   - type: Vocalizer
   - type: DatasetVocalizer
-    dataset: MedibotAds
+    dataset: RefillableMedibotAds
   - type: Inventory
     templateId: medibot
   - type: DoAfter

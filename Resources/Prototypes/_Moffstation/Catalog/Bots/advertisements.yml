@@ -1,0 +1,5 @@
+- type: localizedDataset
+  id: RefillableMedibotAds
+  values:
+    prefix: advertisement-refillable-medibot-
+    count: 18
