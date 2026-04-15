@@ -1,0 +1,14 @@
+- type: entity
+  parent: MarkerBase
+  id: SpawnMobRefillableMedibot
+  name: refillable medibot spawner
+  components:
+  - type: Sprite
+    layers:
+    - state: green
+    ## TODO: Update when refillable medibot sprites are updated
+    - sprite: Mobs/Silicon/Bots/refillable-medibot.rsi
+      state: refillable-medibot
+  - type: ConditionalSpawner
+    prototypes:
+    - MobRefillableMedibot

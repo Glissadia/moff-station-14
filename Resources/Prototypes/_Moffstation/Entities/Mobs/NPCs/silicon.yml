@@ -1,0 +1,48 @@
+- type: entity
+  parent:
+  - MobSiliconBase
+  - ShowMedicalIcons
+  - StripableInventoryBase
+  id: MobRefillableMedibot
+  name: refillable medibot
+  description: No substitute for a doctor, but better than nothing.
+  components:
+  - type: RefillableMedibot
+    treatments:
+      Alive:
+        reagent: Tricordrazine
+        quantity: 30
+      Critical:
+        reagent: Inaprovaline
+        quantity: 15
+  - type: EmaggableRefillableMedibot
+    replacements:
+      # when you are fine, medibot will help you go sleep
+      Alive:
+        reagent: Nocturine # Moffstation - Make medibots worth emagging
+        quantity: 15
+      # when you are crit, medibot will help you have fun
+      Critical:
+        reagent: SpaceDrugs
+        quantity: 25
+  - type: Sprite
+    sprite: Mobs/Silicon/Bots/refillable-medibot.rsi
+    state: refillable-medibot
+  - type: HTN
+    rootTask:
+      task: RefillableMedibotCompound
+  - type: Construction
+    graph: RefillableMediBot
+    node: bot
+  - type: Anchorable
+  - type: InteractionPopup
+    interactSuccessString: petting-success-medibot
+    interactFailureString: petting-failure-medibot
+    interactSuccessSound:
+      path: /Audio/Ambience/Objects/periodic_beep.ogg
+  - type: Vocalizer
+  - type: DatasetVocalizer
+    dataset: MedibotAds
+  - type: Inventory
+    templateId: medibot
+  - type: DoAfter

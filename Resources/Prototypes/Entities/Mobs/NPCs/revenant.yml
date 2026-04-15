@@ -54,6 +54,7 @@
       # troll medical to help get kills
       - StasisBed
       - EmaggableMedibot
+      - EmaggableRefillableMedibot # Moffstation - Makes revenants able to affect the Refillable Medibot as well
       # borg become killer
       - EmagSiliconLaw
   - type: PointLight

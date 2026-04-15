@@ -1,0 +1,8 @@
+- type: construction
+  id: refillable-medibot
+  graph: RefillableMediBot
+  startNode: start
+  targetNode: bot
+  category: construction-category-utilities
+  objectType: Item
+
