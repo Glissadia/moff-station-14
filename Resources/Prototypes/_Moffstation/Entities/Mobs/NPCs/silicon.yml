@@ -46,3 +46,26 @@
   - type: Inventory
     templateId: medibot
   - type: DoAfter
+  - type: Lock
+    locked: true
+    unlockOnClick: false
+  #- type: ActivatableUIRequiresAccess
+  - type: AccessReader
+    access: [["Command"], ["Medical"], ["Research"]]
+  #- type: SolutionContainerManager
+  #  solutions:
+  #    tank:
+  #      maxVol: 200
+  #- type: DumpableSolution
+  #  solution: tank
+  #- type: RefillableSolution
+  #  solution: tank
+  - type: ItemSlots
+    slots:
+      jugSlot:
+        whitelist:
+          tags:
+          - Jug
+          - GlassBeaker
+  - type: ItemSlotsLock
+    slots: ["jugSlot"]
