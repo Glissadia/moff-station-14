@@ -1,17 +1,21 @@
-using Robust.Shared.Audio.Systems;
-using Robust.Shared.Serialization;
-using System.Diagnostics.CodeAnalysis;
+using Content.Shared.Chemistry.Components;
+using Content.Shared.Chemistry.Components.SolutionManager;
 using Content.Shared.Chemistry.EntitySystems;
+using Content.Shared.Containers.ItemSlots;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.DoAfter;
 using Content.Shared.Emag.Components;
 using Content.Shared.Emag.Systems;
+using Content.Shared.FixedPoint;
 using Content.Shared.Interaction;
 using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.NPC.Components;
 using Content.Shared.Popups;
+using Robust.Shared.Audio.Systems;
+using Robust.Shared.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Content.Shared._Moffstation.Silicons.Bots;
 
@@ -22,6 +26,7 @@ public sealed class RefillableMedibotSystem : EntitySystem
 {
     [Dependency] private readonly SharedAudioSystem _audio = default!;
     [Dependency] private readonly EmagSystem _emag = default!;
+    [Dependency] private readonly ItemSlotsSystem _itemSlots = default!;
     [Dependency] private SharedInteractionSystem _interaction = default!;
     [Dependency] private SharedSolutionContainerSystem _solutionContainer = default!;
     [Dependency] private SharedPopupSystem _popup = default!;
@@ -59,7 +64,10 @@ public sealed class RefillableMedibotSystem : EntitySystem
 
     private void OnInteract(Entity<RefillableMedibotComponent> medibot, ref UserActivateInWorldEvent args)
     {
-        if (!CheckInjectable(medibot!, args.Target, true)) return;
+        if (!CheckInjectable(medibot!, args.Target, true)
+            || !TryGetContainedSolution(medibot!, out _, out var solution)
+            || !CheckEnoughSolution(medibot!, solution))
+            return;
 
         _doAfter.TryStartDoAfter(new DoAfterArgs(EntityManager, args.User, 2f, new RefillableMedibotInjectDoAfterEvent(), args.User, args.Target)
         {
@@ -123,6 +131,63 @@ public sealed class RefillableMedibotSystem : EntitySystem
     }
 
     /// <summary>
+    /// Checks if the given solution is enough to inject
+    /// </summary>
+    public bool CheckEnoughSolution(Entity<RefillableMedibotComponent?> medibot, Solution solution)
+    {
+        if (!Resolve(medibot, ref medibot.Comp, false)) return false;
+
+        if (solution.Volume == 0
+            || !medibot.Comp.AllowPartialInjections && solution.Volume < medibot.Comp.InjectionTransferAmount)
+        {
+            _popup.PopupClient(Loc.GetString("refillable-medibot-not-enough-solution"), medibot, medibot);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Checks if the refillable medibot contains a solution and gets it, null if no solution.
+    /// </summary>
+    public bool TryGetContainedSolution(Entity<RefillableMedibotComponent?> medibot, [NotNullWhen(true)] out Entity<SolutionComponent>? solutionComponent, [NotNullWhen(true)] out Solution? solution)
+    {
+        if (!TryComp<ItemSlotsComponent>(medibot, out var itemSlots))
+        {
+            solution = null;
+            solutionComponent = null;
+            return false;
+        }
+
+        var container = _itemSlots.GetItemOrNull(medibot, "containerSlot", itemSlots);
+
+        if (container == null)
+        {
+            _popup.PopupClient(Loc.GetString("refillable-medibot-no-container"), medibot, medibot);
+            solution = null;
+            solutionComponent = null;
+            return false;
+        }
+
+        if (!TryComp<SolutionContainerManagerComponent>(container, out var containerSolutionContainerManager)
+            || !TryComp<FitsInDispenserComponent>(container, out var containerFitsInDispenser)
+            || !_solutionContainer.TryGetFitsInDispenser((container.Value, containerFitsInDispenser, containerSolutionContainerManager), out var containerSolutionComponent, out var containerSolution)
+            )
+        {
+            solution = null;
+            solutionComponent = null;
+            return false;
+        }
+        else
+        {
+            solution = containerSolution;
+            solutionComponent = containerSolutionComponent;
+        }
+        return true;
+
+    }
+
+    /// <summary>
     /// Tries to inject the target.
     /// </summary>
     public bool TryInject(Entity<RefillableMedibotComponent?> medibot, EntityUid target)
@@ -132,10 +197,15 @@ public sealed class RefillableMedibotSystem : EntitySystem
         if (!_interaction.InRangeUnobstructed(medibot.Owner, target)) return false;
 
         if (!TryComp<MobStateComponent>(target, out var mobState)) return false;
+        if (!TryGetContainedSolution(medibot, out var solutionComponent, out var solution)) return false;
         if (!TryGetTreatment(medibot.Comp, mobState.CurrentState, out var treatment)) return false;
-        if (!_solutionContainer.TryGetInjectableSolution(target, out var injectable, out _)) return false;
+        if (!_solutionContainer.TryGetInjectableSolution(target, out var injectableComponent, out var injectable)) return false;
+        if (!CheckEnoughSolution(medibot, solution)) return false;
 
-        _solutionContainer.TryAddReagent(injectable.Value, treatment.Reagent, treatment.Quantity, out _);
+        //_solutionContainer.TryAddReagent(injectable.Value, treatment.Reagent, treatment.Quantity, out _);
+        var amountToTransfer = FixedPoint2.Min(medibot.Comp.InjectionTransferAmount, injectable.AvailableVolume);
+        var injection = _solutionContainer.SplitSolution(solutionComponent.Value, amountToTransfer);
+        _solutionContainer.TryAddSolution(injectableComponent.Value, injection);
 
         _popup.PopupEntity(Loc.GetString("injector-component-feel-prick-message"), target, target);
         _popup.PopupClient(Loc.GetString("refillable-medibot-target-injected"), medibot, medibot);

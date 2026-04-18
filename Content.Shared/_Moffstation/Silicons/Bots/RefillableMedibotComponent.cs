@@ -25,6 +25,18 @@ public sealed partial class RefillableMedibotComponent : Component
     /// </summary>
     [DataField("injectSound")]
     public SoundSpecifier InjectSound = new SoundPathSpecifier("/Audio/Items/hypospray.ogg");
+
+    /// <summary>
+    /// How many units to transfer per injection from the container to the mob.
+    /// </summary>
+    [DataField]
+    public FixedPoint2 InjectionTransferAmount = 5;
+
+    /// <summary>
+    /// Whether or not the refillable medibot should inject less than the specified amount if the inserted container doesn't contain the full amount.
+    /// </summary>
+    [DataField]
+    public bool AllowPartialInjections = true;
 }
 
 /// <summary>
