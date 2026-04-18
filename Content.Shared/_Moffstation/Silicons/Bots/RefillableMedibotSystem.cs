@@ -14,8 +14,10 @@ using Content.Shared.Mobs.Components;
 using Content.Shared.NPC.Components;
 using Content.Shared.Popups;
 using Robust.Shared.Audio.Systems;
+using Robust.Shared.Containers;
 using Robust.Shared.Serialization;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace Content.Shared._Moffstation.Silicons.Bots;
 
@@ -40,6 +42,7 @@ public sealed class RefillableMedibotSystem : EntitySystem
         SubscribeLocalEvent<EmaggableRefillableMedibotComponent, GotEmaggedEvent>(OnEmagged);
         SubscribeLocalEvent<RefillableMedibotComponent, UserActivateInWorldEvent>(OnInteract);
         SubscribeLocalEvent<RefillableMedibotComponent, RefillableMedibotInjectDoAfterEvent>(OnInject);
+        SubscribeLocalEvent<RefillableMedibotComponent, ItemSlotEjectAttemptEvent>(OnEject);
     }
 
     private void OnEmagged(EntityUid uid, EmaggableRefillableMedibotComponent comp, ref GotEmaggedEvent args)
@@ -62,6 +65,16 @@ public sealed class RefillableMedibotSystem : EntitySystem
         args.Handled = true;
     }
 
+    private void OnEject(Entity<RefillableMedibotComponent> medibot, ref ItemSlotEjectAttemptEvent args)
+    {
+        var idList = medibot.Comp.InjectionDoAfterIds.ToList();
+        idList.ForEach(id =>
+        {
+            _doAfter.Cancel(id);
+        });
+        medibot.Comp.InjectionDoAfterIds.Clear();
+    }
+
     private void OnInteract(Entity<RefillableMedibotComponent> medibot, ref UserActivateInWorldEvent args)
     {
         if (!CheckInjectable(medibot!, args.Target, true)
@@ -69,15 +82,22 @@ public sealed class RefillableMedibotSystem : EntitySystem
             || !CheckEnoughSolution(medibot!, solution))
             return;
 
-        _doAfter.TryStartDoAfter(new DoAfterArgs(EntityManager, args.User, 2f, new RefillableMedibotInjectDoAfterEvent(), args.User, args.Target)
+        if (_doAfter.TryStartDoAfter(new DoAfterArgs(EntityManager, args.User, 2f, new RefillableMedibotInjectDoAfterEvent(), args.User, args.Target)
         {
             BlockDuplicate = true,
             BreakOnMove = true,
-        });
+        }, out var id))
+            medibot.Comp.InjectionDoAfterIds.Add(id.Value);
     }
 
     private void OnInject(EntityUid uid, RefillableMedibotComponent comp, ref RefillableMedibotInjectDoAfterEvent args)
     {
+        // This will be false if the doAfter was canceled due to movement or another reason besides ejecting the container.
+        comp.InjectionDoAfterIds.Remove(args.DoAfter.Id);
+        //if (!comp.InjectionDoAfterIds.Remove(args.DoAfter.Id))
+        //{
+        //    Log.Warning($"Attempted to remove a doAfter from InjectionDoAfterIds with invalid id ({args.DoAfter.Id}) on entity {ToPrettyString(uid)}.");
+        //}
         if (args.Cancelled) return;
 
         if (args.Target is { } target)

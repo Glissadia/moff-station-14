@@ -1,4 +1,5 @@
 using Content.Shared.Chemistry.Reagent;
+using Content.Shared.DoAfter;
 using Content.Shared.FixedPoint;
 using Content.Shared.Mobs;
 using Robust.Shared.Audio;
@@ -37,6 +38,13 @@ public sealed partial class RefillableMedibotComponent : Component
     /// </summary>
     [DataField]
     public bool AllowPartialInjections = true;
+
+    /// <summary>
+    /// A list of currently running DoAfterIds.
+    /// Current, duplicate injection DoAfters are blocked, so this list will be capped at one entry.
+    /// </summary>
+    [ViewVariables]
+    public List<DoAfterId> InjectionDoAfterIds = [];
 }
 
 /// <summary>
