@@ -28,6 +28,7 @@ namespace Content.Shared._Moffstation.Silicons.Bots;
 /// </summary>
 public sealed class RefillableMedibotSystem : EntitySystem
 {
+    [Dependency] private readonly IPrototypeManager _prototypeManager = default!;
     [Dependency] private readonly SharedAudioSystem _audio = default!;
     [Dependency] private readonly EmagSystem _emag = default!;
     [Dependency] private readonly ItemSlotsSystem _itemSlots = default!;
@@ -116,7 +117,7 @@ public sealed class RefillableMedibotSystem : EntitySystem
     /// </remarks>
     //public bool TryGetTreatment(RefillableMedibotComponent comp, MobState state, [NotNullWhen(true)] out RefillableMedibotTreatment? treatment)
     //{
-        //return comp.Treatments.TryGetValue(state, out treatment);
+    //    return comp.Treatments.TryGetValue(state, out treatment);
     //}
 
     /// <summary>
@@ -240,7 +241,10 @@ public sealed class RefillableMedibotSystem : EntitySystem
         {
             npcRecentlyInjectedComponent = AddComp<NPCRecentlyInjectedComponent>(target);
         }
-        _npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, medibot.Comp.DamageType);
+        if (_prototypeManager.Resolve(medibot.Comp.DamageType, out var damageType))
+        {
+            _npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, damageType);
+        }
 
         _popup.PopupEntity(Loc.GetString("injector-component-feel-prick-message"), target, target);
         _popup.PopupClient(Loc.GetString("refillable-medibot-target-injected"), medibot, medibot);

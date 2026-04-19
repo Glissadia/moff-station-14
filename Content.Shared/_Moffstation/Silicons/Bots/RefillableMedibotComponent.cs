@@ -20,7 +20,7 @@ public sealed partial class RefillableMedibotComponent : Component
     /// Damage type the bot will inject upon detecting.
     /// </summary>
     [DataField]
-    public DamageTypePrototype DamageType = null;
+    public ProtoId<DamageTypePrototype>? DamageType = null;
 
     /// <summary>
     /// Sound played after injecting a patient.
