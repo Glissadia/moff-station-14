@@ -56,9 +56,11 @@
       operator: !type:InteractWithOperator
         expectDoAfter: true
         targetKey: Target
-    - !type:HTNPrimitiveTask
-      operator: !type:EnsureComponentOperator
-        targetKey: Target
-        components:
-        - type: NPCRecentlyInjected
+    # Moffstation - Begin - Moved logic for adding NPCRecentlyInjectedComponent to medibot entity system rather than HTN in order to support treated damage type tracking
+    #- !type:HTNPrimitiveTask
+    #  operator: !type:EnsureComponentOperator
+    #    targetKey: Target
+    #    components:
+    #    - type: NPCRecentlyInjected
+    # Moffstation - End - Moved logic for adding NPCRecentlyInjectedComponent to medibot entity system rather than HTN in order to support treated damage type tracking
 

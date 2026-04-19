@@ -1,21 +1,22 @@
-using Content.Shared._Moffstation.NPC.Systems;
+using Robust.Shared.Audio.Systems;
+using Robust.Shared.Prototypes; // Moffstation - Used for resolving ProtoIds
+using Robust.Shared.Serialization;
+using System.Diagnostics.CodeAnalysis;
+using Content.Shared._Moffstation.NPC.Systems; // Moffstation - New entity system for NPCRecentlyInjected component
 using Content.Shared.Chemistry.EntitySystems;
-using Content.Shared.Chemistry.Reagent;
+using Content.Shared.Damage; // Moffstation - Used for parsing damage types
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
 using Content.Shared.DoAfter;
 using Content.Shared.Emag.Components;
 using Content.Shared.Emag.Systems;
-using Content.Shared.EntityConditions;
+using Content.Shared.EntityConditions; // Moffstation - Used for checking whether reagent effects will proc
+using Content.Shared.EntityEffects.Effects.Damage; // Moffstation - Used for getting the types of damage any given reagent treats
 using Content.Shared.Interaction;
 using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.NPC.Components;
 using Content.Shared.Popups;
-using Robust.Shared.Audio.Systems;
-using Robust.Shared.Prototypes;
-using Robust.Shared.Serialization;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Content.Shared.Silicons.Bots;
 
@@ -144,10 +145,7 @@ public sealed class MedibotSystem : EntitySystem
         _solutionContainer.TryAddReagent(injectable.Value, treatment.Reagent, treatment.Quantity, out _);
 
         // Moffstation - Begin - Moved logic for adding NPCRecentlyInjectedComponent to medibot entity system rather than HTN in order to support treated damage type tracking
-        if (!TryComp<NPCRecentlyInjectedComponent>(target, out var npcRecentlyInjectedComponent))
-        {
-            npcRecentlyInjectedComponent = AddComp<NPCRecentlyInjectedComponent>(target);
-        }
+        var npcRecentlyInjectedComponent = EnsureComp<NPCRecentlyInjectedComponent>(target);
         if (_prototypeManager.Resolve(treatment.Reagent, out var reagentPrototype)
             && reagentPrototype.Metabolisms is not null)
             foreach (var effectEntry in reagentPrototype.Metabolisms.Metabolisms.Values)
@@ -155,11 +153,44 @@ public sealed class MedibotSystem : EntitySystem
                 foreach (var effect in effectEntry.Effects)
                 {
                     if (effect.Conditions is null || !_entityConditionsSystem.TryConditions(target, effect.Conditions)) continue;
-                    Log.Debug($"Effect: {effect.ToString()}");
+                    if (effect is HealthChange healthChangeEffect)
+                    {
+                        foreach (var damageTypeProtoId in DamageSpecifier.GetNegative(healthChangeEffect.Damage).DamageDict.Keys)
+                        {
+                            if (_prototypeManager.Resolve(damageTypeProtoId, out var damageType))
+                                _npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, damageType);
+                        }
+                    }
+                    if (effect is EvenHealthChange evenHealthChangeEffect)
+                    {
+                        foreach (var damageGroupProtoId in evenHealthChangeEffect.Damage.Keys)
+                        {
+                            if (_prototypeManager.Resolve(damageGroupProtoId, out var damageGroup))
+                            {
+                                foreach (var damageTypeProtoId in damageGroup.DamageTypes)
+                                {
+                                    if (_prototypeManager.Resolve(damageTypeProtoId, out var damageType))
+                                        _npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, damageType);
+                                }
+                            }
+                        }
+                    }
+                    if (effect is DistributedHealthChange distributedHealthChangeEffect)
+                    {
+                        foreach (var damageGroupProtoId in distributedHealthChangeEffect.Damage.Keys)
+                        {
+                            if (_prototypeManager.Resolve(damageGroupProtoId, out var damageGroup))
+                            {
+                                foreach (var damageTypeProtoId in damageGroup.DamageTypes)
+                                {
+                                    if (_prototypeManager.Resolve(damageTypeProtoId, out var damageType))
+                                        _npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, damageType);
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        
-        //_npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, medibot.Comp.DamageType);
         // Moffstation - End - Moved logic for adding NPCRecentlyInjectedComponent to medibot entity system rather than HTN in order to support treated damage type tracking
 
         _popup.PopupEntity(Loc.GetString("injector-component-feel-prick-message"), target, target);
