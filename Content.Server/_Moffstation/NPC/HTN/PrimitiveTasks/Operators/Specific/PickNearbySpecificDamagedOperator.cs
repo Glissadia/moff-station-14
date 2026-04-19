@@ -1,7 +1,9 @@
 using System.Threading;
 using System.Threading.Tasks;
+using Content.Server.NPC;
 using Content.Shared.NPC.Components;
 using Content.Server.NPC.Pathfinding;
+using Content.Server.NPC.HTN.PrimitiveTasks;
 using Content.Shared.Chemistry.Components.SolutionManager;
 using Content.Shared.Damage.Components;
 using Content.Shared.Damage.Systems;
@@ -11,7 +13,7 @@ using Content.Shared._Moffstation.Silicons.Bots;
 using Content.Shared.Emag.Components;
 using Content.Shared.FixedPoint;
 
-namespace Content.Server.NPC.HTN.PrimitiveTasks.Operators.Specific;
+namespace Content.Server._Moffstation.NPC.HTN.PrimitiveTasks.Operators.Specific;
 
 public sealed partial class PickNearbySpecificDamagedOperator : HTNOperator
 {
@@ -77,8 +79,8 @@ public sealed partial class PickNearbySpecificDamagedOperator : HTNOperator
                 !_recentlyInjected.HasComponent(entity))
             {
                 // no treating dead bodies
-                if (!_medibot.TryGetTreatment(medibot, state.CurrentState, out var treatment))
-                    continue;
+                //if (!_medibot.TryGetTreatment(medibot, state.CurrentState, out var treatment))
+                //    continue;
 
                 // Only go towards a target if the bot can actually help them or if the medibot is emagged
                 // note: this and the actual injecting don't check for specific damage types so for example,

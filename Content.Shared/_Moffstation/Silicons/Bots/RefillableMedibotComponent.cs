@@ -1,4 +1,5 @@
 using Content.Shared.Chemistry.Reagent;
+using Content.Shared.Damage.Prototypes;
 using Content.Shared.DoAfter;
 using Content.Shared.FixedPoint;
 using Content.Shared.Mobs;
@@ -16,10 +17,10 @@ namespace Content.Shared._Moffstation.Silicons.Bots;
 public sealed partial class RefillableMedibotComponent : Component
 {
     /// <summary>
-    /// Treatments the bot will apply for each mob state.
+    /// Damage type the bot will inject upon detecting.
     /// </summary>
-    [DataField(required: true)]
-    public Dictionary<MobState, RefillableMedibotTreatment> Treatments = new();
+    [DataField]
+    public DamageTypePrototype DamageType = null;
 
     /// <summary>
     /// Sound played after injecting a patient.

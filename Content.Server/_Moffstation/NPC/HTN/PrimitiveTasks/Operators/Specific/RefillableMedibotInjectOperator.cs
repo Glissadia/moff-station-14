@@ -1,4 +1,7 @@
 using Content.Server.Chat.Systems;
+using Content.Server.NPC;
+using Content.Server.NPC.HTN;
+using Content.Server.NPC.HTN.PrimitiveTasks;
 using Content.Shared.Chat;
 using Content.Shared.Chemistry.EntitySystems;
 using Content.Shared.Interaction;
@@ -6,7 +9,7 @@ using Content.Shared.Popups;
 using Content.Shared._Moffstation.Silicons.Bots;
 using Robust.Shared.Audio.Systems;
 
-namespace Content.Server.NPC.HTN.PrimitiveTasks.Operators.Specific;
+namespace Content.Server._Moffstation.NPC.HTN.PrimitiveTasks.Operators.Specific;
 
 public sealed partial class RefillableMedibotInjectOperator : HTNOperator
 {

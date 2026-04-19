@@ -56,9 +56,9 @@
       operator: !type:InteractWithOperator
         expectDoAfter: true
         targetKey: Target
-    - !type:HTNPrimitiveTask
-      operator: !type:EnsureComponentOperator
-        targetKey: Target
-        components:
-        - type: NPCRecentlyInjected
+    #- !type:HTNPrimitiveTask
+    #  operator: !type:EnsureComponentOperator
+    #    targetKey: Target
+    #    components:
+    #    - type: NPCRecentlyInjected
 

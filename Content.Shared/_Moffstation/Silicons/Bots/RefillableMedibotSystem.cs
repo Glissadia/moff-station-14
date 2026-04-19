@@ -1,3 +1,4 @@
+using Content.Shared._Moffstation.NPC.Systems;
 using Content.Shared.Chemistry.Components;
 using Content.Shared.Chemistry.Components.SolutionManager;
 using Content.Shared.Chemistry.EntitySystems;
@@ -15,6 +16,7 @@ using Content.Shared.NPC.Components;
 using Content.Shared.Popups;
 using Robust.Shared.Audio.Systems;
 using Robust.Shared.Containers;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Serialization;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -29,11 +31,12 @@ public sealed class RefillableMedibotSystem : EntitySystem
     [Dependency] private readonly SharedAudioSystem _audio = default!;
     [Dependency] private readonly EmagSystem _emag = default!;
     [Dependency] private readonly ItemSlotsSystem _itemSlots = default!;
-    [Dependency] private SharedInteractionSystem _interaction = default!;
-    [Dependency] private SharedSolutionContainerSystem _solutionContainer = default!;
-    [Dependency] private SharedPopupSystem _popup = default!;
-    [Dependency] private SharedDoAfterSystem _doAfter = default!;
+    [Dependency] private readonly SharedInteractionSystem _interaction = default!;
+    [Dependency] private readonly SharedSolutionContainerSystem _solutionContainer = default!;
+    [Dependency] private readonly SharedPopupSystem _popup = default!;
+    [Dependency] private readonly SharedDoAfterSystem _doAfter = default!;
     [Dependency] private readonly DamageableSystem _damageable = default!;
+    [Dependency] private readonly NPCRecentlyInjectedSystem _npcRecentlyInjectedSystem = default!;
 
     public override void Initialize()
     {
@@ -59,7 +62,8 @@ public sealed class RefillableMedibotSystem : EntitySystem
         // Emag behavior
         foreach (var (state, treatment) in comp.Replacements)
         {
-            medibot.Treatments[state] = treatment;
+            //medibot.Treatments[state] = treatment;
+            continue;
         }
 
         args.Handled = true;
@@ -110,10 +114,10 @@ public sealed class RefillableMedibotSystem : EntitySystem
     /// <remarks>
     /// This only exists because allowing other execute would allow modifying the dictionary, and Read access does not cover TryGetValue.
     /// </remarks>
-    public bool TryGetTreatment(RefillableMedibotComponent comp, MobState state, [NotNullWhen(true)] out RefillableMedibotTreatment? treatment)
-    {
-        return comp.Treatments.TryGetValue(state, out treatment);
-    }
+    //public bool TryGetTreatment(RefillableMedibotComponent comp, MobState state, [NotNullWhen(true)] out RefillableMedibotTreatment? treatment)
+    //{
+        //return comp.Treatments.TryGetValue(state, out treatment);
+    //}
 
     /// <summary>
     /// Checks if the target can be injected.
@@ -122,7 +126,7 @@ public sealed class RefillableMedibotSystem : EntitySystem
     {
         if (!Resolve(medibot, ref medibot.Comp, false)) return false;
 
-        if (HasComp<NPCRecentlyInjectedComponent>(target))
+        if (HasComp<NPCRecentlyInjectedComponent>(target)) // Checks for injected by medibot in the last minute
         {
             _popup.PopupClient(Loc.GetString("refillable-medibot-recently-injected"), medibot, medibot);
             return false;
@@ -132,20 +136,25 @@ public sealed class RefillableMedibotSystem : EntitySystem
         if (!TryComp<DamageableComponent>(target, out var damageable)) return false;
         if (!_solutionContainer.TryGetInjectableSolution(target, out _, out _)) return false;
 
-        if (mobState.CurrentState != MobState.Alive && mobState.CurrentState != MobState.Critical)
+        if (mobState.CurrentState != MobState.Alive && mobState.CurrentState != MobState.Critical) // Checks for dead
         {
             _popup.PopupClient(Loc.GetString("refillable-medibot-target-dead"), medibot, medibot);
             return false;
         }
 
-        var total = _damageable.GetTotalDamage((target, damageable));
-        if (total == 0 && !HasComp<EmaggedComponent>(medibot))
+        var damages = _damageable.GetPositiveDamage((target, damageable));
+        if (!damages.AnyPositive() && !HasComp<EmaggedComponent>(medibot)) // Checks for any damage
         {
             _popup.PopupClient(Loc.GetString("refillable-medibot-target-healthy"), medibot, medibot);
             return false;
         }
+        if (!damages.AnyPositive() && !HasComp<EmaggedComponent>(medibot)) // Checks for the specified type of damage
+        {
+            _popup.PopupClient(Loc.GetString("refillable-medibot-wrong-damage"), medibot, medibot);
+            return false;
+        }
 
-        if (!TryGetTreatment(medibot.Comp, mobState.CurrentState, out var treatment) || !manual) return false;
+        //if (!TryGetTreatment(medibot.Comp, mobState.CurrentState, out var treatment) || !manual) return false;
 
         return true;
     }
@@ -218,7 +227,7 @@ public sealed class RefillableMedibotSystem : EntitySystem
 
         if (!TryComp<MobStateComponent>(target, out var mobState)) return false;
         if (!TryGetContainedSolution(medibot, out var solutionComponent, out var solution)) return false;
-        if (!TryGetTreatment(medibot.Comp, mobState.CurrentState, out var treatment)) return false;
+        //if (!TryGetTreatment(medibot.Comp, mobState.CurrentState, out var treatment)) return false;
         if (!_solutionContainer.TryGetInjectableSolution(target, out var injectableComponent, out var injectable)) return false;
         if (!CheckEnoughSolution(medibot, solution)) return false;
 
@@ -226,6 +235,12 @@ public sealed class RefillableMedibotSystem : EntitySystem
         var amountToTransfer = FixedPoint2.Min(medibot.Comp.InjectionTransferAmount, injectable.AvailableVolume);
         var injection = _solutionContainer.SplitSolution(solutionComponent.Value, amountToTransfer);
         _solutionContainer.TryAddSolution(injectableComponent.Value, injection);
+
+        if (!TryComp<NPCRecentlyInjectedComponent>(target, out var npcRecentlyInjectedComponent))
+        {
+            npcRecentlyInjectedComponent = AddComp<NPCRecentlyInjectedComponent>(target);
+        }
+        _npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, medibot.Comp.DamageType);
 
         _popup.PopupEntity(Loc.GetString("injector-component-feel-prick-message"), target, target);
         _popup.PopupClient(Loc.GetString("refillable-medibot-target-injected"), medibot, medibot);

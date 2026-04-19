@@ -8,13 +8,13 @@
   description: No substitute for a doctor, but better than nothing.
   components:
   - type: RefillableMedibot
-    treatments:
-      Alive:
-        reagent: Tricordrazine
-        quantity: 30
-      Critical:
-        reagent: Inaprovaline
-        quantity: 15
+    #treatments:
+    #  Alive:
+    #    reagent: Tricordrazine
+    #    quantity: 30
+    #  Critical:
+    #    reagent: Inaprovaline
+    #    quantity: 15
   - type: EmaggableRefillableMedibot
     replacements:
       # when you are fine, medibot will help you go sleep
