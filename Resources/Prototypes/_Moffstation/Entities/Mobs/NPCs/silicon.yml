@@ -8,7 +8,7 @@
   description: No substitute for a doctor, but better than nothing.
   components:
   - type: RefillableMedibot
-    #damageType: Bloodloss
+    damageType: Blunt
     #treatments:
     #  Alive:
     #    reagent: Tricordrazine

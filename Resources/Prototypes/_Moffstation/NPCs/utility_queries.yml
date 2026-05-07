@@ -1,0 +1,18 @@
+- type: utilityQuery
+  id: RefillableMedibotInjectable
+  query:
+    - !type:ComponentQuery
+      components:
+        - type: InjectableSolution
+        - type: Damageable
+        - type: MobState
+  considerations:
+    - !type:TargetIsCritCon
+      curve: !type:QuadraticCurve
+        slope: 1
+        exponent: 1
+        yOffset: 0.1
+        xOffset: 0
+    - !type:TargetDistanceCon
+      curve: !type:PresetCurve
+        preset: TargetDistance

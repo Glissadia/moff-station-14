@@ -11,21 +11,22 @@ using Content.Shared.Interaction;
 using Content.Shared.Mobs.Components;
 using Content.Shared._Moffstation.Silicons.Bots;
 using Content.Shared.Emag.Components;
-using Content.Shared.FixedPoint;
+using Content.Shared._Moffstation.NPC.Systems;
 
 namespace Content.Server._Moffstation.NPC.HTN.PrimitiveTasks.Operators.Specific;
 
 public sealed partial class PickNearbySpecificDamagedOperator : HTNOperator
 {
     [Dependency] private readonly IEntityManager _entManager = default!;
-    private RefillableMedibotSystem _medibot = default!;
+    private RefillableMedibotSystem _refillableMedibot = default!;
     private PathfindingSystem _pathfinding = default!;
     private DamageableSystem _damageable = default!;
+    private NPCRecentlyInjectedSystem _npcRecentlyInjected = default!;
 
     private EntityQuery<DamageableComponent> _damageQuery = default!;
     private EntityQuery<InjectableSolutionComponent> _injectQuery = default!;
-    private EntityQuery<NPCRecentlyInjectedComponent> _recentlyInjected = default!;
-    private EntityQuery<MobStateComponent> _mobState = default!;
+    private EntityQuery<NPCRecentlyInjectedComponent> _recentlyInjectedQuery = default!;
+    private EntityQuery<MobStateComponent> _mobStateQuery = default!;
     private EntityQuery<EmaggedComponent> _emaggedQuery = default!;
 
     [DataField("rangeKey")] public string RangeKey = NPCBlackboard.MedibotInjectRange;
@@ -45,14 +46,15 @@ public sealed partial class PickNearbySpecificDamagedOperator : HTNOperator
     public override void Initialize(IEntitySystemManager sysManager)
     {
         base.Initialize(sysManager);
-        _medibot = sysManager.GetEntitySystem<RefillableMedibotSystem>();
+        _refillableMedibot = sysManager.GetEntitySystem<RefillableMedibotSystem>();
         _pathfinding = sysManager.GetEntitySystem<PathfindingSystem>();
         _damageable = sysManager.GetEntitySystem<DamageableSystem>();
+        _npcRecentlyInjected = sysManager.GetEntitySystem<NPCRecentlyInjectedSystem>();
 
         _damageQuery = _entManager.GetEntityQuery<DamageableComponent>();
         _injectQuery = _entManager.GetEntityQuery<InjectableSolutionComponent>();
-        _recentlyInjected = _entManager.GetEntityQuery<NPCRecentlyInjectedComponent>();
-        _mobState = _entManager.GetEntityQuery<MobStateComponent>();
+        _recentlyInjectedQuery = _entManager.GetEntityQuery<NPCRecentlyInjectedComponent>();
+        _mobStateQuery = _entManager.GetEntityQuery<MobStateComponent>();
         _emaggedQuery = _entManager.GetEntityQuery<EmaggedComponent>();
     }
 
@@ -73,22 +75,26 @@ public sealed partial class PickNearbySpecificDamagedOperator : HTNOperator
 
         foreach (var (entity, _) in patients)
         {
-            if (_mobState.TryGetComponent(entity, out var state) &&
+            if (_mobStateQuery.TryGetComponent(entity, out var state) &&
                 _injectQuery.HasComponent(entity) &&
                 _damageQuery.TryGetComponent(entity, out var damage) &&
-                !_recentlyInjected.HasComponent(entity))
+                _refillableMedibot.TryGetDamageType(medibot, out var damageType) &&
+                (!_recentlyInjectedQuery.TryGetComponent(entity, out var npcRecentyInjected)
+                || !_npcRecentlyInjected.WasInjectedFor(npcRecentyInjected, damageType)))
             {
-                // no treating dead bodies
-                //if (!_medibot.TryGetTreatment(medibot, state.CurrentState, out var treatment))
-                //    continue;
-
-                // Only go towards a target if the bot can actually help them or if the medibot is emagged
-                // note: this and the actual injecting don't check for specific damage types so for example,
-                // radiation damage will trigger injection but the tricordrazine won't heal it.
-                if (!_emaggedQuery.HasComponent(entity) && _damageable.GetTotalDamage((entity, damage)) == FixedPoint2.Zero)
+                // No treating dead bodies
+                if (!_refillableMedibot.CheckTreatableState(medibot, state.CurrentState))
                     continue;
 
-                //Needed to make sure it doesn't sometimes stop right outside it's interaction range
+                // Only go towards a target if the bot can actually help them or if the medibot is emagged
+                // Note: Unlike the regular medibot, this does check for specific damage types
+                // Should this be just calling CheckInjectable instead?
+                if (!_refillableMedibot.TryGetDamageTypeProtoId(medibot, out var damageTypeProtoId)
+                    || !_damageable.GetPositiveDamage((entity, damage)).DamageDict.ContainsKey((Robust.Shared.Prototypes.ProtoId<Shared.Damage.Prototypes.DamageTypePrototype>)damageTypeProtoId))
+                    continue;
+
+
+                //Needed to make sure it doesn't sometimes stop right outside its interaction range
                 var pathRange = SharedInteractionSystem.InteractionRange - 1f;
                 var path = await _pathfinding.GetPath(owner, entity, pathRange, cancelToken);
 

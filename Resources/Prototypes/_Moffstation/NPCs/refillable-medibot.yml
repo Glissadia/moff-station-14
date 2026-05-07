@@ -5,7 +5,7 @@
   - tasks:
     - !type:HTNPrimitiveTask
       operator: !type:UtilityOperator
-        proto: MedibotInjectable
+        proto: RefillableMedibotInjectable
         returnType: EnumerableDescending
     - !type:HTNPrimitiveTask
       operator: !type:PickNearbySpecificDamagedOperator

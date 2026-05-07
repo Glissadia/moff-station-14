@@ -41,8 +41,14 @@ public sealed partial class RefillableMedibotComponent : Component
     public bool AllowPartialInjections = true;
 
     /// <summary>
+    /// The mob states that the refillable medibot can treat (only alive and crit, no treating dead bodies).
+    /// </summary>
+    [DataField]
+    public HashSet<MobState> TreatableStates = new() { MobState.Alive, MobState.Critical };
+
+    /// <summary>
     /// A list of currently running DoAfterIds.
-    /// Current, duplicate injection DoAfters are blocked, so this list will be capped at one entry.
+    /// Current, duplicate injection DoAfters are blocked, so this list should only have one entry.
     /// </summary>
     [ViewVariables]
     public List<DoAfterId> InjectionDoAfterIds = [];

@@ -4,6 +4,7 @@ using Content.Shared.Chemistry.Components.SolutionManager;
 using Content.Shared.Chemistry.EntitySystems;
 using Content.Shared.Containers.ItemSlots;
 using Content.Shared.Damage.Components;
+using Content.Shared.Damage.Prototypes;
 using Content.Shared.Damage.Systems;
 using Content.Shared.DoAfter;
 using Content.Shared.Emag.Components;
@@ -15,7 +16,6 @@ using Content.Shared.Mobs.Components;
 using Content.Shared.NPC.Components;
 using Content.Shared.Popups;
 using Robust.Shared.Audio.Systems;
-using Robust.Shared.Containers;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Serialization;
 using System.Diagnostics.CodeAnalysis;
@@ -121,15 +121,35 @@ public sealed class RefillableMedibotSystem : EntitySystem
     //}
 
     /// <summary>
+    /// Check if the given state is one that the refillable medibot is set to treat (no treating dead bodies).
+    /// </summary>
+    public bool CheckTreatableState(Entity<RefillableMedibotComponent?> medibot, MobState state)
+    {
+        if (!Resolve(medibot, ref medibot.Comp, false)) return false;
+        return medibot.Comp.TreatableStates.Contains(state);
+    }
+
+    /// <summary>
+    /// Check if the given state is one that the refillable medibot is set to treat (no treating dead bodies).
+    /// </summary>
+    public bool CheckTreatableState(RefillableMedibotComponent? medibot, MobState state)
+    {
+        if (medibot is null) return false;
+        return medibot.TreatableStates.Contains(state);
+    }
+
+    /// <summary>
     /// Checks if the target can be injected.
     /// </summary>
     public bool CheckInjectable(Entity<RefillableMedibotComponent?> medibot, EntityUid target, bool manual = false)
     {
         if (!Resolve(medibot, ref medibot.Comp, false)) return false;
 
-        if (HasComp<NPCRecentlyInjectedComponent>(target)) // Checks for injected by medibot in the last minute
+        if (!TryGetDamageType(medibot, out var damageType)
+            || !TryGetDamageTypeProtoId(medibot, out var damageTypeProtoId)) return false;
+        if (TryComp<NPCRecentlyInjectedComponent>(target, out var npcRecentlyInjectedComponent) && _npcRecentlyInjectedSystem.WasInjectedFor(npcRecentlyInjectedComponent, damageType!)) // Checks for injected by medibot in the last minute
         {
-            _popup.PopupClient(Loc.GetString("refillable-medibot-recently-injected"), medibot, medibot);
+            _popup.PopupClient(Loc.GetString("refillable-medibot-recently-injected-for-damage"), medibot, medibot);
             return false;
         }
 
@@ -149,7 +169,7 @@ public sealed class RefillableMedibotSystem : EntitySystem
             _popup.PopupClient(Loc.GetString("refillable-medibot-target-healthy"), medibot, medibot);
             return false;
         }
-        if (!damages.AnyPositive() && !HasComp<EmaggedComponent>(medibot)) // Checks for the specified type of damage
+        if (!damages.DamageDict.ContainsKey((ProtoId<DamageTypePrototype>)damageTypeProtoId!)) // Checks for the specified type of damage
         {
             _popup.PopupClient(Loc.GetString("refillable-medibot-wrong-damage"), medibot, medibot);
             return false;
@@ -218,6 +238,70 @@ public sealed class RefillableMedibotSystem : EntitySystem
     }
 
     /// <summary>
+    /// Gets the refillable medibot's set damage type, returns false if null.
+    /// </summary>
+    public bool TryGetDamageType(Entity<RefillableMedibotComponent?> medibot, [NotNullWhen(true)] out DamageTypePrototype? damageType)
+    {
+        if (!Resolve(medibot, ref medibot.Comp, false)
+            || medibot.Comp.DamageType is null
+            || !_prototypeManager.TryIndex(medibot.Comp.DamageType, out damageType))
+        {
+            damageType = null;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Gets the refillable medibot's set damage type, returns false if null.
+    /// </summary>
+    public bool TryGetDamageType(RefillableMedibotComponent? medibot, [NotNullWhen(true)] out DamageTypePrototype? damageType)
+    {
+        if (medibot is null
+            || medibot.DamageType is null
+            || !_prototypeManager.TryIndex(medibot.DamageType, out damageType))
+        {
+            damageType = null;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Gets the refillable medibot's set damage type ProtoId, returns false if null.
+    /// </summary>
+    public bool TryGetDamageTypeProtoId(Entity<RefillableMedibotComponent?> medibot, [NotNullWhen(true)] out ProtoId<DamageTypePrototype>? damageTypeProtoId)
+    {
+        if (!Resolve(medibot, ref medibot.Comp, false)
+            || medibot.Comp.DamageType is null)
+        {
+            damageTypeProtoId = null;
+            return false;
+        }
+
+        damageTypeProtoId = medibot.Comp.DamageType;
+        return true;
+    }
+
+    /// <summary>
+    /// Gets the refillable medibot's set damage type ProtoId, returns false if null.
+    /// </summary>
+    public bool TryGetDamageTypeProtoId(RefillableMedibotComponent? medibot, [NotNullWhen(true)] out ProtoId<DamageTypePrototype>? damageTypeProtoId)
+    {
+        if (medibot is null
+            || medibot.DamageType is null)
+        {
+            damageTypeProtoId = null;
+            return false;
+        }
+
+        damageTypeProtoId = medibot.DamageType;
+        return true;
+    }
+
+    /// <summary>
     /// Tries to inject the target.
     /// </summary>
     public bool TryInject(Entity<RefillableMedibotComponent?> medibot, EntityUid target)
@@ -241,7 +325,7 @@ public sealed class RefillableMedibotSystem : EntitySystem
         {
             npcRecentlyInjectedComponent = AddComp<NPCRecentlyInjectedComponent>(target);
         }
-        if (_prototypeManager.Resolve(medibot.Comp.DamageType, out var damageType))
+        if (TryGetDamageType(medibot, out var damageType))
         {
             _npcRecentlyInjectedSystem.AddDamageTypeEntry(npcRecentlyInjectedComponent, damageType);
         }

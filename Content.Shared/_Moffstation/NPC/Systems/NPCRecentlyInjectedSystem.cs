@@ -38,9 +38,9 @@ public sealed partial class NPCRecentlyInjectedSystem : EntitySystem
     /// <summary>
     /// Checks if the NPCRecentlyInjectedComponent has an entry for the given damage type (if the entity was recently injected for that damage)
     /// </summary>
-    public bool WasInjectedFor(Entity<NPCRecentlyInjectedComponent?> ent, DamageTypePrototype damageType)
+    public bool WasInjectedFor(NPCRecentlyInjectedComponent? component, DamageTypePrototype damageType)
     {
-        if (!_recentlyInjectedQuery.TryComp(ent, out var component)) return false;
+        if (component is null) return false;
         return component.TimeSinceTreatments.TryGetValue(damageType, out _);
     }
 
