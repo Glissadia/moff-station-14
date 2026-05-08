@@ -24,7 +24,7 @@ using System.Linq;
 namespace Content.Shared._Moffstation.Silicons.Bots;
 
 /// <summary>
-/// Handles emagging refillable medibots and provides api.
+/// Handles refillable medibot functionality and emagging and provides api.
 /// </summary>
 public sealed class RefillableMedibotSystem : EntitySystem
 {
@@ -43,13 +43,13 @@ public sealed class RefillableMedibotSystem : EntitySystem
     {
         base.Initialize();
 
-        SubscribeLocalEvent<EmaggableRefillableMedibotComponent, GotEmaggedEvent>(OnEmagged);
+        SubscribeLocalEvent<RefillableMedibotComponent, GotEmaggedEvent>(OnEmagged);
         SubscribeLocalEvent<RefillableMedibotComponent, UserActivateInWorldEvent>(OnInteract);
         SubscribeLocalEvent<RefillableMedibotComponent, RefillableMedibotInjectDoAfterEvent>(OnInject);
         SubscribeLocalEvent<RefillableMedibotComponent, ItemSlotEjectAttemptEvent>(OnEject);
     }
 
-    private void OnEmagged(EntityUid uid, EmaggableRefillableMedibotComponent comp, ref GotEmaggedEvent args)
+    private void OnEmagged(EntityUid uid, RefillableMedibotComponent comp, ref GotEmaggedEvent args)
     {
         if (!_emag.CompareFlag(args.Type, EmagType.Interaction))
             return;
@@ -61,11 +61,6 @@ public sealed class RefillableMedibotSystem : EntitySystem
             return;
 
         // Emag behavior
-        foreach (var (state, treatment) in comp.Replacements)
-        {
-            //medibot.Treatments[state] = treatment;
-            continue;
-        }
 
         args.Handled = true;
     }

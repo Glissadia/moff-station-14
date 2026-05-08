@@ -5,6 +5,7 @@ using Content.Shared.FixedPoint;
 using Content.Shared.Mobs;
 using Robust.Shared.Audio;
 using Robust.Shared.Prototypes;
+using Robust.Shared.Serialization;
 
 namespace Content.Shared._Moffstation.Silicons.Bots;
 
@@ -54,21 +55,24 @@ public sealed partial class RefillableMedibotComponent : Component
     public List<DoAfterId> InjectionDoAfterIds = [];
 }
 
-/// <summary>
-/// An injection to treat the patient with.
-/// </summary>
-[DataDefinition]
-public sealed partial class RefillableMedibotTreatment
+public enum RefillableMedibotSelectableDamageTypes // This list excludes structural and holy/metaphysical damage, as they're not treatable with chems
 {
-    /// <summary>
-    /// Reagent to inject into the patient.
-    /// </summary>
-    [DataField(required: true)]
-    public ProtoId<ReagentPrototype> Reagent = string.Empty;
+    Asphyxiation,
+    Bloodloss,
+    Blunt,
+    Cellular,
+    Caustic,
+    Cold,
+    Heat,
+    Piercing,
+    Poison,
+    Radiation,
+    Shock,
+    Slash,
+}
 
-    /// <summary>
-    /// How much of the reagent to inject.
-    /// </summary>
-    [DataField(required: true)]
-    public FixedPoint2 Quantity;
+[Serializable, NetSerializable]
+public enum RefillableMedibotUiKey : byte
+{
+    Key
 }
